@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waterpipe Extended</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;font-family:Arial,Helvetica,sans-serif;font-size:13px;background:#111}
+#canvas-wrap{position:absolute;top:0;left:230px;right:0;bottom:0;background:#111;display:flex;align-items:center;justify-content:center;overflow:hidden}
+canvas{display:block}
+.sidebar{position:absolute;top:0;left:0;width:230px;height:100%;background:#263238;display:flex;flex-direction:column;overflow:hidden}
+.sh{background:#1a252f;padding:9px 10px 7px;flex-shrink:0;border-bottom:1px solid #0d1b22}
+.sh h1{color:#fff;font-size:1.2em;margin:0}
+.sh small{color:#607d8b;font-size:.68em}
+.fb{flex:1;overflow-y:auto;padding-bottom:6px}
+.fb::-webkit-scrollbar{width:4px}
+.fb::-webkit-scrollbar-thumb{background:#455a64}
+h2{font-size:.68em;background:#37474f;color:#b0bec5;font-weight:700;margin:8px 0 3px;padding:3px 10px;text-transform:uppercase;letter-spacing:.07em}
+.row{padding:2px 10px 2px;display:flex;flex-direction:column;gap:1px}
+.row label{color:#90a4ae;font-size:.68em;display:flex;justify-content:space-between;align-items:center}
+.row label .val{color:#eceff1;font-weight:700;font-size:.85em;min-width:40px;text-align:right}
+input[type=range]{width:100%;height:3px;accent-color:#ff7043;cursor:pointer;margin-top:1px}
+input[type=color]{width:100%;height:21px;border:1px solid #37474f;border-radius:3px;padding:1px;cursor:pointer;background:#1a252f}
+input[type=number],select{width:100%;background:#1a252f;border:1px solid #37474f;color:#eceff1;border-radius:3px;padding:2px 5px;font-size:.7em}
+input[type=file]{display:none}
+.hint{font-size:.6em;color:#546e7a;margin-top:0}
+.cs-wrap{padding:2px 10px 3px;display:flex;flex-direction:column;gap:3px}
+.cs-row{display:flex;gap:4px;align-items:center}
+.cs-row input[type=color]{flex:0 0 32px;height:20px}
+.cs-row input[type=range]{flex:1}
+.cs-row .csp{color:#78909c;font-size:.65em;min-width:28px;text-align:right}
+.cs-row .csdel{background:#b71c1c;color:#fff;border:none;border-radius:2px;width:15px;height:15px;font-size:.6em;cursor:pointer;flex-shrink:0;line-height:15px;text-align:center}
+.cs-add{background:#1565c0;color:#fff;border:none;border-radius:3px;font-size:.65em;padding:2px 8px;cursor:pointer;margin:1px 10px 0;width:calc(100% - 20px)}
+.ck{padding:2px 10px;display:flex;align-items:center;gap:5px}
+.ck label{color:#90a4ae;font-size:.68em;cursor:pointer;flex:1}
+.ck input[type=checkbox]{accent-color:#ff7043;width:12px;height:12px;cursor:pointer;flex-shrink:0}
+.btns{padding:6px 7px;display:flex;flex-direction:column;gap:4px;background:#1a252f;border-top:1px solid #0d1b22;flex-shrink:0}
+.btn{width:100%;text-align:center;font-size:.72em;padding:6px 4px;color:#fff;cursor:pointer;border:none;border-radius:3px;font-weight:600}
+.br{display:flex;gap:3px}
+.br .btn{font-size:.65em}
+.bg{background:#2e7d32}.bg:hover{background:#43a047}
+.bs{background:#b71c1c}.bs:hover{background:#e53935}
+.bk{background:#212121;border:1px solid #555}
+.bw{background:#78909c}
+.bt{background:#1565c0}.bt:hover{background:#1976d2}
+.bj{background:#00695c}
+.bh{background:#4a148c}.bh:hover{background:#6a1b9a}
+.bjson{background:#6a1b9a}
+.bload{background:#37474f}
+.sb{padding:3px 10px;font-size:.62em;color:#546e7a;text-align:center;border-top:1px solid #0d1b22;flex-shrink:0}
+.ri{display:flex;gap:4px;padding:2px 10px}
+.ri .row{padding:0;flex:1}
+.warn{color:#ff8f00;font-size:.6em;padding:1px 10px;display:none}
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <div class="sh"><h1>Waterpipe+</h1><small>rozszerzony generator dymu</small></div>
+  <div class="fb">
+
+    <h2>Gradient dymu</h2>
+    <div class="cs-wrap" id="cs-list"></div>
+    <button class="cs-add" onclick="addCS()">+ Dodaj kolor</button>
+
+    <h2>Styl dymu</h2>
+    <div class="row"><label>Krycie <span class="val" id="smokeOpacity-v">10%</span></label><input type="range" id="smokeOpacity" min="1" max="100" value="10"></div>
+    <div class="row"><label>Wielkość dymu % <span class="val" id="radiusSize-v">100%</span></label><input type="range" id="radiusSize" min="5" max="900" value="100"></div>
+    <div class="row"><label>Grubość linii <span class="val" id="lineWidth-v">2.0px</span></label><input type="range" id="lineWidth" min="0.1" max="15" step="0.1" value="2"></div>
+    <div class="row"><label>Ilość dymów <span class="val" id="numCircles-v">1</span></label><input type="range" id="numCircles" min="1" max="10" step="1" value="1"></div>
+    <div class="ck"><input type="checkbox" id="clipToFrame" checked><label for="clipToFrame">Ogranicz wzór do kadru</label></div>
+
+    <h2>Ścieżka przebiegu</h2>
+    <div class="row"><label>Typ ścieżki</label>
+      <select id="pathType" onchange="onPTC()">
+        <option value="lr">Lewa → Prawa (oryginał)</option>
+        <option value="rl">Prawa → Lewa</option>
+        <option value="tb">Góra → Dół</option>
+        <option value="bt">Dół → Góra</option>
+        <option value="circle">Okrąg / Łuk</option>
+      </select>
+    </div>
+    <div id="p-lr">
+      <div class="row"><label>Start Y <span class="val" id="startY-v">50%</span></label><input type="range" id="startY" min="0" max="100" value="50"></div>
+    </div>
+    <div id="p-tb" style="display:none">
+      <div class="row"><label>Start X <span class="val" id="startX-v">50%</span></label><input type="range" id="startX" min="0" max="100" value="50"></div>
+    </div>
+    <div class="row" id="p-off"><label>Offset px <span class="val" id="pathOffset-v">0</span></label><input type="range" id="pathOffset" min="-400" max="400" step="5" value="0"></div>
+    <div id="p-circle" style="display:none">
+      <div class="row"><label>Promień % <span class="val" id="circleRadius-v">38%</span></label><input type="range" id="circleRadius" min="1" max="98" value="38"></div>
+      <div class="row"><label>Środek X % <span class="val" id="circleCX-v">50%</span></label><input type="range" id="circleCX" min="1" max="99" value="50"></div>
+      <div class="row"><label>Środek Y % <span class="val" id="circleCY-v">50%</span></label><input type="range" id="circleCY" min="1" max="99" value="50"></div>
+      <div class="row"><label>Łuk od ° <span class="val" id="arcStart-v">0°</span></label><input type="range" id="arcStart" min="0" max="359" value="0"></div>
+      <div class="row"><label>Łuk do ° <span class="val" id="arcEnd-v">360°</span></label><input type="range" id="arcEnd" min="1" max="360" value="360"></div>
+      <div class="row"><label>Kierunek</label>
+        <select id="circleDir"><option value="1">Zgodnie z zegarem</option><option value="-1">Przeciwnie</option></select>
+      </div>
+      <div class="row" style="background:#1c3040;border-radius:3px;padding:4px 6px;margin:3px 0"><label style="color:#80cbc4;font-weight:700">⬤ Fala radialna okręgu <span class="val" id="radialWave-v">0</span></label><input type="range" id="radialWave" min="0" max="200" step="1" value="0"><div class="hint" style="color:#4db6ac">pierścień pulsuje od/do środka (0 = brak)</div></div>
+    </div>
+
+    <h2>Wielokrotne przebiegi</h2>
+    <div class="row"><label>Nakładające się przebiegi <span class="val" id="multiPass-v">1</span></label><input type="range" id="multiPass" min="1" max="8" step="1" value="1"></div>
+    <div class="row"><label>Offset startu % <span class="val" id="multiOffset-v">30%</span></label><input type="range" id="multiOffset" min="0" max="100" value="30"></div>
+
+    <h2>Symetria</h2>
+    <div class="ck"><input type="checkbox" id="symH"><label for="symH">Symetria pozioma (flip X)</label></div>
+    <div class="ck"><input type="checkbox" id="symV"><label for="symV">Symetria pionowa (flip Y)</label></div>
+    <div class="row"><label>Symetria rotacyjna <span class="val" id="symR-v">1x (brak)</span></label><input type="range" id="symR" min="1" max="12" step="1" value="1"></div>
+
+    <h2>Kształt fraktalny</h2>
+    <div class="row"><label>Iteracje <span class="val" id="iterations-v">8</span></label><input type="range" id="iterations" min="1" max="11" step="1" value="8"></div>
+    <div class="row"><label>Min promień <span class="val" id="minRadFactor-v">0.00</span></label><input type="range" id="minRadFactor" min="0" max="1" step="0.01" value="0"></div>
+    <div class="row"><label>Losowość <span class="val" id="randomness-v">1.00</span></label><input type="range" id="randomness" min="0.05" max="5" step="0.05" value="1"></div>
+    <div class="row"><label>Seed (0=losowy) <span class="val" id="seed-v">losowy</span></label><input type="range" id="seed" min="0" max="9999" step="1" value="0"></div>
+
+    <h2>Ruch</h2>
+    <div class="row"><label>Prędkość wzdłuż ścieżki <span class="val" id="speedX-v">0.50</span></label><input type="range" id="speedX" min="0.02" max="8" step="0.02" value="0.5"></div>
+    <div class="row"><label>Dryf prostopadły <span class="val" id="speedY-v">0.04</span></label><input type="range" id="speedY" min="-2" max="2" step="0.01" value="0.04"></div>
+    <div class="row"><label>Ścisk X (1.0=koło idealne) <span class="val" id="xSqueeze-v">0.75</span></label><input type="range" id="xSqueeze" min="0.1" max="2" step="0.01" value="0.75"></div>
+    <div class="row"><label>Amplituda fali <span class="val" id="waveAmp-v">40</span></label><input type="range" id="waveAmp" min="0" max="500" step="1" value="40"></div>
+    <div class="row"><label>Częstość fali <span class="val" id="waveFreq-v">1000</span></label><input type="range" id="waveFreq" min="50" max="5000" step="10" value="1000"></div>
+    <div class="row"><label>Obrót fazy <span class="val" id="phaseSpeed-v">0.0002</span></label><input type="range" id="phaseSpeed" min="0" max="0.01" step="0.0001" value="0.0002"></div>
+    <div class="row"><label>Ewolucja wzoru <span class="val" id="changeSpeed-v">250</span></label><input type="range" id="changeSpeed" min="20" max="2000" step="10" value="250"></div>
+    <div class="row"><label>Rysowań/klatkę <span class="val" id="drawsPerFrame-v">10</span></label><input type="range" id="drawsPerFrame" min="1" max="80" step="1" value="10"></div>
+    <div class="row"><label>Timer ms <span class="val" id="timerMs-v">1</span></label><input type="range" id="timerMs" min="1" max="200" step="1" value="1"></div>
+
+    <h2>Blending</h2>
+    <div class="row"><label>Tryb</label>
+      <select id="blendMode">
+        <option value="source-over">Normalny</option>
+        <option value="lighter">Addytywny (lighter)</option>
+        <option value="screen">Screen</option>
+        <option value="hard-light">Hard light</option>
+        <option value="soft-light">Soft light</option>
+      </select>
+    </div>
+    <div class="row"><label>Globalne krycie <span class="val" id="globalAlpha-v">1.00</span></label><input type="range" id="globalAlpha" min="0.05" max="1" step="0.01" value="1"></div>
+
+    <h2>Tło</h2>
+    <div class="row"><label>Kolor zewnętrzny</label><input type="color" id="bgColorOuter" value="#000000"></div>
+    <div class="row"><label>Kolor wewnętrzny</label><input type="color" id="bgColorInner" value="#000000"></div>
+
+    <h2>Eksport</h2>
+    <div class="ri">
+      <div class="row"><label>Szer. px</label><input type="number" id="expW" value="1920" min="100" max="8192" oninput="chkHR()"></div>
+      <div class="row"><label>Wys. px</label><input type="number" id="expH" value="1080" min="100" max="8192" oninput="chkHR()"></div>
+    </div>
+    <div class="warn" id="hr-warn">⚠ >4MP — generowanie może potrwać kilka minut</div>
+    <div class="row"><label>Jakość JPG <span class="val" id="jpgQ-v">0.95</span></label><input type="range" id="jpgQ" min="0.1" max="1" step="0.01" value="0.95"></div>
+
+  </div><!-- /fb -->
+
+  <div class="btns">
+    <div class="br">
+      <button class="btn bg" onclick="generate()">▶ Generuj</button>
+      <button class="btn bs" onclick="stopGen()">■ Stop</button>
+    </div>
+    <div class="br">
+      <button class="btn bk" onclick="dl('black','png')">PNG czarne</button>
+      <button class="btn bw" onclick="dl('white','png')">PNG białe</button>
+    </div>
+    <button class="btn bt" onclick="dl('transparent','png')">↓ PNG przezroczyste</button>
+    <button class="btn bj" onclick="dl('black','jpg')">↓ JPG</button>
+    <button class="btn bh" onclick="genHR()">🔬 Generuj hi-res do pliku</button>
+    <div class="br">
+      <button class="btn bjson" onclick="saveJSON()">💾 Zapisz JSON</button>
+      <button class="btn bload" onclick="document.getElementById('jInput').click()">📂 Wczytaj JSON</button>
+    </div>
+    <input type="file" id="jInput" accept=".json" onchange="loadJSON(event)">
+  </div>
+  <div class="sb" id="status">Gotowy — kliknij Generuj</div>
+</div>
+
+<div id="canvas-wrap"><canvas id="c"></canvas></div>
+
+<script>
+// ── globals ────────────────────────────────────────────
+const canvas=document.getElementById('c'), ctx=canvas.getContext('2d');
+let smokeC,smokeX;
+const wrap=document.getElementById('canvas-wrap');
+let W,H,circles=[],drawCount=0,timer=null;
+const PI2=2*Math.PI;
+
+const gv=id=>parseFloat(document.getElementById(id).value);
+const gi=id=>parseInt(document.getElementById(id).value);
+const gc=id=>document.getElementById(id).value;
+const gb=id=>document.getElementById(id).checked;
+const st=id=>document.getElementById(id).textContent;
+
+// ── GRADIENT: use native canvas gradient ───────────────
+// colorStops: [{color:'#rrggbb', pos:0..1}, ...]
+// sorted ascending by pos
+let csUid=0;
+let fileVer=0; // increments each save so filenames are unique
+let colorStops=[
+  {uid:++csUid, color:'#ff6a00',pos:0},
+  {uid:++csUid, color:'#8800ff',pos:0.5},
+  {uid:++csUid, color:'#03f7ff',pos:1}
+];
+
+function renderCS(){
+  colorStops.sort((a,b)=>a.pos-b.pos);
+  const list=document.getElementById('cs-list');
+  list.innerHTML='';
+  colorStops.forEach((cs)=>{
+    const row=document.createElement('div');
+    row.className='cs-row';
+    // Each row closes over its own cs object — no index lookup
+    row.innerHTML=`<input type="color" class="csc" value="${cs.color}">
+      <input type="range" class="csr" min="0" max="1" step="0.005" value="${cs.pos.toFixed(3)}">
+      <span class="csp">${Math.round(cs.pos*100)}%</span>
+      ${colorStops.length>2?`<button class="csdel">✕</button>`:''}`;
+    list.appendChild(row);
+    row.querySelector('.csc').addEventListener('input',ev=>{
+      cs.color=ev.target.value; // mutate only this cs
+    });
+    row.querySelector('.csr').addEventListener('input',ev=>{
+      cs.pos=parseFloat(ev.target.value);
+      row.querySelector('.csp').textContent=Math.round(cs.pos*100)+'%';
+      colorStops.sort((a,b)=>a.pos-b.pos);
+      renderCS();
+    });
+    const del=row.querySelector('.csdel');
+    if(del) del.addEventListener('click',()=>{
+      const uid=cs.uid;
+      colorStops=colorStops.filter(x=>x.uid!==uid);
+      renderCS();
+    });
+  });
+}
+function addCS(){
+  colorStops.push({uid:++csUid, color:'#ffffff', pos:0.75});
+  colorStops.sort((a,b)=>a.pos-b.pos);
+  renderCS();
+}
+
+function hexRGB(h){
+  h=h.replace('#','');
+  return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
+}
+
+// Faithful gradient — identical behaviour to original waterpipe.js.
+// pos=0 → outermost ring (addColorStop near 1), pos=1 → innermost (addColorStop near 0).
+// Full opacity at every color stop; transparency comes from smokeOpacity on each stroke.
+// A tiny transparent sentinel at r=maxR lets the outermost edge feather naturally.
+function makeGradRGBA(tCtx, minR, maxR, opacity){
+  const r0=Math.max(0, minR);
+  const r1=Math.max(r0+1, maxR);
+  const g=tCtx.createRadialGradient(0,0,r0, 0,0,r1);
+  const sorted=[...colorStops].sort((a,b)=>a.pos-b.pos);
+  // inner stops: pos=1 → nearest center (gradient stop 0), pos=0 → outer (gradient stop ~1)
+  sorted.forEach(cs=>{
+    const [r,gr,b]=hexRGB(cs.color);
+    const gStop=1-cs.pos; // map pos=0→stop1 (outer), pos=1→stop0 (inner)
+    g.addColorStop(Math.min(0.999, Math.max(0, gStop)), `rgba(${r},${gr},${b},${opacity})`);
+  });
+  // feather the very outer edge to transparent — keeps soft smoke look
+  const outerCs=sorted[0];
+  const [ro,go,bo]=hexRGB(outerCs.color);
+  g.addColorStop(1, `rgba(${ro},${go},${bo},0)`);
+  return g;
+}
+
+// ── PATH ───────────────────────────────────────────────
+function onPTC(){
+  const t=gc('pathType'),circ=t==='circle',tb=t==='tb'||t==='bt';
+  document.getElementById('p-lr').style.display=(t==='lr'||t==='rl')?'block':'none';
+  document.getElementById('p-tb').style.display=tb?'block':'none';
+  document.getElementById('p-off').style.display=circ?'none':'flex';
+  document.getElementById('p-circle').style.display=circ?'block':'none';
+}
+
+function pathPos(prog,maxR,cw,ch){
+  const t=gc('pathType');
+  const sy=gv('startY')/100, sx=gv('startX')/100, off=gv('pathOffset');
+  if(t==='lr')return{x:-maxR+prog*(cw+2*maxR),y:ch*sy+off};
+  if(t==='rl')return{x:cw+maxR-prog*(cw+2*maxR),y:ch*sx+off};
+  if(t==='tb')return{x:cw*sx+off,y:-maxR+prog*(ch+2*maxR)};
+  if(t==='bt')return{x:cw*sx+off,y:ch+maxR-prog*(ch+2*maxR)};
+  if(t==='circle'){
+    const cx=cw*gv('circleCX')/100, cy=ch*gv('circleCY')/100;
+    const r=Math.min(cw,ch)*gv('circleRadius')/100;
+    const aS=gv('arcStart')*Math.PI/180, aE=gv('arcEnd')*Math.PI/180;
+    const dir=+gc('circleDir');
+    return{x:cx+r*Math.cos(aS+dir*prog*(aE-aS)), y:cy+r*Math.sin(aS+dir*prog*(aE-aS))};
+  }
+  return{x:-maxR+prog*(cw+2*maxR),y:ch*0.5};
+}
+
+function pathLen(maxR,cw,ch){
+  const t=gc('pathType');
+  if(t==='lr'||t==='rl')return cw+2*maxR;
+  if(t==='tb'||t==='bt')return ch+2*maxR;
+  if(t==='circle'){
+    const r=Math.min(cw,ch)*gv('circleRadius')/100;
+    return r*Math.abs((gv('arcEnd')-gv('arcStart'))*Math.PI/180)||1;
+  }
+  return cw+2*maxR;
+}
+
+// ── SEEDED RNG ─────────────────────────────────────────
+let rngS=1;
+function rngSeed(s){rngS=(s>>>0)||1;}
+function rng(){rngS^=rngS<<13;rngS^=rngS>>17;rngS^=rngS<<5;return(rngS>>>0)/4294967296;}
+function rand(){return gi('seed')>0?rng():Math.random();}
+
+// ── FRACTAL LINE ───────────────────────────────────────
+function linePoints(iter,rnd){
+  const pl={first:{x:0,y:1,next:null}};
+  const last={x:1,y:1,next:null};
+  pl.first.next=last;
+  let mn=1,mx=1;
+  for(let i=0;i<iter;i++){
+    let p=pl.first;
+    while(p.next){
+      const np=p.next, dx=np.x-p.x;
+      const ny=0.5*(p.y+np.y)+dx*(rand()*2-1)*rnd;
+      const nP={x:0.5*(p.x+np.x),y:ny,next:np};
+      if(ny<mn)mn=ny; else if(ny>mx)mx=ny;
+      p.next=nP; p=np;
+    }
+  }
+  if(mx!==mn){const n=1/(mx-mn);let p=pl.first;while(p){p.y=n*(p.y-mn);p=p.next;}}
+  else{let p=pl.first;while(p){p.y=1;p=p.next;}}
+  return pl;
+}
+
+// ── RESIZE / BG ────────────────────────────────────────
+function resize(){
+  W=wrap.clientWidth; H=wrap.clientHeight;
+  canvas.width=W; canvas.height=H;
+  smokeC=document.createElement('canvas');smokeC.width=W;smokeC.height=H;
+  smokeX=smokeC.getContext('2d');
+}
+
+function fillBG(tCtx,w,h){
+  const outerR=Math.sqrt(w*w+h*h)/2;
+  const g=tCtx.createRadialGradient(w*0.75,h*0.375,0, w/2,h/4,outerR);
+  g.addColorStop(0,gc('bgColorInner'));
+  g.addColorStop(1,gc('bgColorOuter'));
+  tCtx.fillStyle=g; tCtx.fillRect(0,0,w,h);
+}
+
+// ── INIT CIRCLES ───────────────────────────────────────
+function initCircles(cw,ch){
+  circles=[];
+  const num=gi('numCircles'),iter=gi('iterations'),rnd=gv('randomness');
+  const rad=gv('radiusSize')/100, mRF=gv('minRadFactor');
+  const chSpd=gv('changeSpeed'), mp=gi('multiPass'), mo=gv('multiOffset')/100;
+  const seed=gi('seed');
+  if(seed>0) rngSeed(seed);
+  const baseR=Math.min(cw,ch)*0.4*rad;
+  for(let pass=0;pass<mp;pass++){
+    for(let i=0;i<num;i++){
+      const maxR=baseR, minR=mRF*maxR;
+      circles.push({
+        prog:-pass*mo, pLen:pathLen(maxR,cw,ch),
+        maxR,minR, param:0, chSpd:1/chSpd,
+        phase:rand()*PI2, gPhase:rand()*PI2, dY:0,
+        pl1:linePoints(iter,rnd), pl2:linePoints(iter,rnd),
+      });
+    }
+  }
+}
+
+// ── DRAW ONE CIRCLE ────────────────────────────────────
+function drawC(tCtx,c,cosP,opacity,xs,lw,blend,ga,cw,ch,clip){
+  const t=gc('pathType');
+  const wA=gv('waveAmp'), wF=gv('waveFreq');
+  const wR=gv('radialWave');
+  const waveLat=wA*Math.sin(c.gPhase+drawCount/wF*PI2);
+  let pos;
+  if(t==='circle' && wR>0){
+    // radial wave: modulate the circle radius so the smoke stays on the ring
+    // but the ring itself breathes in/out
+    const baseR=Math.min(cw,ch)*gv('circleRadius')/100;
+    const radMod=wR*Math.sin(c.gPhase+drawCount/wF*PI2);
+    const cx=cw*gv('circleCX')/100, cy=ch*gv('circleCY')/100;
+    const aS=gv('arcStart')*Math.PI/180, aE=gv('arcEnd')*Math.PI/180;
+    const dir=+gc('circleDir');
+    const angle=aS+dir*c.prog*(aE-aS);
+    pos={x:cx+(baseR+radMod)*Math.cos(angle), y:cy+(baseR+radMod)*Math.sin(angle)};
+  } else {
+    pos=pathPos(c.prog,c.maxR,cw,ch);
+  }
+  let tx=pos.x, ty=pos.y+c.dY;
+  if(t==='tb'||t==='bt') tx+=waveLat; else if(t!=='circle') ty+=waveLat;
+
+  tCtx.save();
+  if(clip){tCtx.beginPath();tCtx.rect(0,0,cw,ch);tCtx.clip();}
+  tCtx.globalCompositeOperation=blend;
+  tCtx.globalAlpha=ga;
+  tCtx.strokeStyle=makeGradRGBA(tCtx,c.minR,c.maxR,opacity);
+  tCtx.lineWidth=lw;
+  tCtx.setTransform(xs,0,0,1,tx,ty);
+  tCtx.beginPath();
+  let p1=c.pl1.first,p2=c.pl2.first;
+  let th=c.phase;
+  let r=c.minR+(p1.y+cosP*(p2.y-p1.y))*(c.maxR-c.minR);
+  tCtx.lineTo(xs*r*Math.cos(th),r*Math.sin(th));
+  while(p1.next){
+    p1=p1.next;p2=p2.next;
+    th=PI2*(p1.x+cosP*(p2.x-p1.x))+c.phase;
+    r=c.minR+(p1.y+cosP*(p2.y-p1.y))*(c.maxR-c.minR);
+    tCtx.lineTo(xs*r*Math.cos(th),r*Math.sin(th));
+  }
+  tCtx.closePath();tCtx.stroke();
+  tCtx.restore();
+}
+
+function drawSym(tCtx,c,cosP,opacity,xs,lw,blend,ga,cw,ch,clip){
+  const sH=gb('symH'),sV=gb('symV'),sR=gi('symR');
+  for(let ri=0;ri<sR;ri++){
+    tCtx.save();
+    if(sR>1){tCtx.translate(cw/2,ch/2);tCtx.rotate(ri*PI2/sR);tCtx.translate(-cw/2,-ch/2);}
+    drawC(tCtx,c,cosP,opacity,xs,lw,blend,ga,cw,ch,clip);
+    if(sH){tCtx.save();tCtx.translate(cw,0);tCtx.scale(-1,1);drawC(tCtx,c,cosP,opacity,xs,lw,blend,ga,cw,ch,clip);tCtx.restore();}
+    if(sV){tCtx.save();tCtx.translate(0,ch);tCtx.scale(1,-1);drawC(tCtx,c,cosP,opacity,xs,lw,blend,ga,cw,ch,clip);tCtx.restore();}
+    if(sH&&sV){tCtx.save();tCtx.translate(cw,ch);tCtx.scale(-1,-1);drawC(tCtx,c,cosP,opacity,xs,lw,blend,ga,cw,ch,clip);tCtx.restore();}
+    tCtx.restore();
+  }
+}
+
+// ── TIMER ──────────────────────────────────────────────
+function tick(){
+  const iter=gi('iterations'),dpf=gi('drawsPerFrame');
+  const lw=gv('lineWidth'),xs=gv('xSqueeze');
+  const spd=gv('speedX'),spy=gv('speedY');
+  const phS=gv('phaseSpeed'),rnd=gv('randomness');
+  const blend=gc('blendMode'),ga=gv('globalAlpha');
+  const opacity=gv('smokeOpacity')/100;
+  const clip=gb('clipToFrame');
+
+  for(let j=0;j<dpf;j++){
+    drawCount++;
+    let done=true;
+    for(let i=0;i<circles.length;i++){
+      const c=circles[i];
+      c.param+=c.chSpd;
+      if(c.param>=1){c.param=0;c.pl1=c.pl2;c.pl2=linePoints(iter,rnd);}
+      const cosP=0.5-0.5*Math.cos(Math.PI*c.param);
+      c.prog+=spd/(c.pLen||W);
+      c.dY+=spy; c.phase+=phS;
+      if(c.prog<0){done=false;continue;}
+      drawSym(ctx,c,cosP,opacity,xs,lw,blend,ga,W,H,clip);
+      drawSym(smokeX,c,cosP,opacity,xs,lw,blend,ga,W,H,clip);
+      if(c.prog<=1)done=false;
+    }
+    ctx.setTransform(1,0,0,1,0,0);
+    smokeX.setTransform(1,0,0,1,0,0);
+    if(done){clearInterval(timer);timer=null;document.getElementById('status').textContent='Gotowy.';return;}
+  }
+  const pct=Math.max(0,Math.min(100,Math.round((circles[0]?.prog||0)*100)));
+  document.getElementById('status').textContent=`Generowanie… ${pct}%`;
+}
+
+// ── GENERATE / STOP ────────────────────────────────────
+function generate(){
+  stopGen();resize();
+  ctx.setTransform(1,0,0,1,0,0);smokeX.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,W,H);smokeX.clearRect(0,0,W,H);
+  fillBG(ctx,W,H); initCircles(W,H); drawCount=0;
+  timer=setInterval(tick,gi('timerMs'));
+  document.getElementById('status').textContent='Generowanie…';
+}
+function stopGen(){
+  if(timer){clearInterval(timer);timer=null;}
+  ctx.setTransform(1,0,0,1,0,0);
+  if(smokeX)smokeX.setTransform(1,0,0,1,0,0);
+}
+
+// ── HI-RES ─────────────────────────────────────────────
+async function genHR(){
+  stopGen();
+  const eW=parseInt(document.getElementById('expW').value)||1920;
+  const eH=parseInt(document.getElementById('expH').value)||1080;
+  document.getElementById('status').textContent=`Hi-res ${eW}×${eH}…`;
+  await new Promise(r=>setTimeout(r,20));
+
+  const hC=document.createElement('canvas');hC.width=eW;hC.height=eH;
+  const hX=hC.getContext('2d');
+  const sC=document.createElement('canvas');sC.width=eW;sC.height=eH;
+  const sX=sC.getContext('2d');
+  fillBG(hX,eW,eH);
+
+  // scale lineWidth to hi-res
+  const scale=Math.min(eW/wrap.clientWidth,eH/wrap.clientHeight);
+  const lw=gv('lineWidth')*scale;
+
+  // init circles at hi-res size
+  const sv={W,H}; W=eW;H=eH; initCircles(eW,eH); W=sv.W;H=sv.H;
+
+  const iter=gi('iterations'),dpf=Math.max(1,gi('drawsPerFrame')*4);
+  const xs=gv('xSqueeze'),spd=gv('speedX'),spy=gv('speedY');
+  const phS=gv('phaseSpeed'),rnd=gv('randomness');
+  const blend=gc('blendMode'),ga=gv('globalAlpha');
+  const opacity=gv('smokeOpacity')/100;
+  const clip=gb('clipToFrame');
+
+  let dc=0,done=false;
+  while(!done){
+    done=true;
+    for(let j=0;j<dpf;j++){
+      dc++;
+      const prevDC=drawCount; drawCount=dc;
+      for(let i=0;i<circles.length;i++){
+        const c=circles[i];
+        c.param+=c.chSpd;
+        if(c.param>=1){c.param=0;c.pl1=c.pl2;c.pl2=linePoints(iter,rnd);}
+        const cosP=0.5-0.5*Math.cos(Math.PI*c.param);
+        c.prog+=spd/(c.pLen||eW);
+        c.dY+=spy; c.phase+=phS;
+        if(c.prog<0){done=false;continue;}
+        drawSym(hX,c,cosP,opacity,xs,lw,blend,ga,eW,eH,clip);
+        drawSym(sX,c,cosP,opacity,xs,lw,blend,ga,eW,eH,clip);
+        hX.setTransform(1,0,0,1,0,0);
+        sX.setTransform(1,0,0,1,0,0);
+        if(c.prog<=1)done=false;
+      }
+      drawCount=prevDC;
+    }
+    const pct=Math.max(0,Math.min(100,Math.round((circles[0]?.prog||0)*100)));
+    document.getElementById('status').textContent=`Hi-res ${eW}×${eH} — ${pct}%`;
+    await new Promise(r=>setTimeout(r,0));
+  }
+
+  // download black+bg
+  const expC=document.createElement('canvas');expC.width=eW;expC.height=eH;
+  const eX=expC.getContext('2d');
+  eX.fillStyle='#000';eX.fillRect(0,0,eW,eH);
+  eX.drawImage(hC,0,0);
+  const tsHR=new Date().toISOString().slice(0,16).replace('T','-').replace(':','');
+  const v1=++fileVer, v2=++fileVer;
+  const a1=document.createElement('a');
+  a1.download=`waterpipe-v${v1}-hires-black-${tsHR}.png`;
+  a1.href=expC.toDataURL('image/png');a1.click();
+  await new Promise(r=>setTimeout(r,300));
+  const a2=document.createElement('a');
+  a2.download=`waterpipe-v${v2}-hires-transp-${tsHR}.png`;
+  a2.href=sC.toDataURL('image/png');a2.click();
+  document.getElementById('status').textContent=`Hi-res gotowy! Pobrano 2 pliki (v${v1}, v${v2}).`;
+  initCircles(W,H);
+}
+
+// ── DOWNLOAD ───────────────────────────────────────────
+function dl(mode,fmt){
+  const eW=parseInt(document.getElementById('expW').value)||W;
+  const eH=parseInt(document.getElementById('expH').value)||H;
+  const off=document.createElement('canvas');off.width=eW;off.height=eH;
+  const ox=off.getContext('2d');
+  if(mode==='black'){ox.fillStyle='#000';ox.fillRect(0,0,eW,eH);}
+  else if(mode==='white'){ox.fillStyle='#fff';ox.fillRect(0,0,eW,eH);}
+  ox.drawImage(mode==='transparent'?smokeC:canvas,0,0,eW,eH);
+  const ts=new Date().toISOString().slice(0,16).replace('T','-').replace(':','');
+  const ext=fmt==='jpg'?'jpg':'png';
+  const a=document.createElement('a');
+  a.download=`waterpipe-v${++fileVer}-${mode}-${ts}.${ext}`;
+  a.href=off.toDataURL(fmt==='jpg'?'image/jpeg':'image/png',fmt==='jpg'?gv('jpgQ'):1);
+  a.click();
+}
+
+function chkHR(){
+  const w=+document.getElementById('expW').value||0,h=+document.getElementById('expH').value||0;
+  document.getElementById('hr-warn').style.display=w*h>4e6?'block':'none';
+}
+
+// ── JSON ───────────────────────────────────────────────
+const SLS=['smokeOpacity','radiusSize','lineWidth','numCircles',
+  'iterations','minRadFactor','randomness','seed',
+  'speedX','speedY','xSqueeze','waveAmp','waveFreq','radialWave','phaseSpeed','changeSpeed',
+  'drawsPerFrame','timerMs','startY','startX','pathOffset',
+  'circleRadius','circleCX','circleCY','arcStart','arcEnd',
+  'multiPass','multiOffset','symR','globalAlpha','jpgQ','expW','expH'];
+const SES=['pathType','blendMode','circleDir'];
+const COS=['bgColorOuter','bgColorInner'];
+const CBS=['symH','symV','clipToFrame'];
+
+function saveJSON(){
+  const d={_v:3,_date:new Date().toISOString().slice(0,19).replace('T',' ')};
+  SLS.forEach(id=>{const e=document.getElementById(id);if(e)d[id]=e.value;});
+  SES.forEach(id=>{const e=document.getElementById(id);if(e)d[id]=e.value;});
+  COS.forEach(id=>{const e=document.getElementById(id);if(e)d[id]=e.value;});
+  CBS.forEach(id=>{const e=document.getElementById(id);if(e)d[id]=e.checked;});
+  d.colorStops=JSON.parse(JSON.stringify(colorStops));
+  const ts=new Date().toISOString().slice(0,16).replace('T','-').replace(':','');
+  const a=document.createElement('a');
+  a.download=`waterpipe-v${++fileVer}-${ts}.json`;
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));
+  a.click();
+}
+
+function loadJSON(ev){
+  const f=ev.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const d=JSON.parse(e.target.result);
+      SLS.forEach(id=>{if(d[id]!=null){const el=document.getElementById(id);if(el)el.value=d[id];}});
+      SES.forEach(id=>{if(d[id]!=null){const el=document.getElementById(id);if(el)el.value=d[id];}});
+      COS.forEach(id=>{if(d[id]!=null){const el=document.getElementById(id);if(el)el.value=d[id];}});
+      CBS.forEach(id=>{if(d[id]!=null){const el=document.getElementById(id);if(el)el.checked=d[id];}});
+      if(d.colorStops){
+        colorStops=d.colorStops.map(cs=>({uid:++csUid,color:cs.color,pos:cs.pos}));
+        renderCS();
+      }
+      document.querySelectorAll('input[type=range]').forEach(el=>el.dispatchEvent(new Event('input')));
+      onPTC();
+      document.getElementById('status').textContent='Wczytano: '+(d._date||f.name);
+      ev.target.value='';
+    }catch(err){alert('Błąd JSON: '+err.message);}
+  };
+  r.readAsText(f);
+}
+
+// ── SLIDER LABELS ──────────────────────────────────────
+const FMT={
+  smokeOpacity:v=>Math.round(v)+'%', radiusSize:v=>Math.round(v)+'%',
+  lineWidth:v=>parseFloat(v).toFixed(1)+'px', numCircles:v=>Math.round(v),
+  iterations:v=>Math.round(v), minRadFactor:v=>parseFloat(v).toFixed(2),
+  randomness:v=>parseFloat(v).toFixed(2), seed:v=>+v>0?Math.round(v):'losowy',
+  speedX:v=>parseFloat(v).toFixed(2), speedY:v=>parseFloat(v).toFixed(2),
+  xSqueeze:v=>parseFloat(v).toFixed(2), waveAmp:v=>Math.round(v),
+  waveFreq:v=>Math.round(v), radialWave:v=>Math.round(v), phaseSpeed:v=>parseFloat(v).toFixed(4),
+  changeSpeed:v=>Math.round(v), drawsPerFrame:v=>Math.round(v),
+  timerMs:v=>Math.round(v), startY:v=>Math.round(v)+'%', startX:v=>Math.round(v)+'%',
+  pathOffset:v=>(+v>0?'+':'')+Math.round(v),
+  circleRadius:v=>Math.round(v)+'%', circleCX:v=>Math.round(v)+'%',
+  circleCY:v=>Math.round(v)+'%', arcStart:v=>Math.round(v)+'°', arcEnd:v=>Math.round(v)+'°',
+  multiPass:v=>Math.round(v), multiOffset:v=>Math.round(v)+'%',
+  symR:v=>+v===1?'1x (brak)':Math.round(v)+'x',
+  globalAlpha:v=>parseFloat(v).toFixed(2), jpgQ:v=>parseFloat(v).toFixed(2),
+};
+function bindSliders(){
+  Object.entries(FMT).forEach(([id,fmt])=>{
+    const el=document.getElementById(id),vEl=document.getElementById(id+'-v');
+    if(el&&vEl){el.addEventListener('input',()=>vEl.textContent=fmt(el.value));vEl.textContent=fmt(el.value);}
+  });
+}
+
+// ── INIT ───────────────────────────────────────────────
+window.addEventListener('load',()=>{
+  renderCS();bindSliders();onPTC();resize();generate();
+});
+window.addEventListener('resize',()=>{if(!timer)resize();});
+</script>
+</body>
+</html>
